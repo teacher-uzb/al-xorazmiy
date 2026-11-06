@@ -299,3 +299,380 @@ Asadbek</textarea>
 
 </html>
 //test abdurahmon
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baraban O'yini Pro</title>
+    <!-- Konfetti effekti uchun kutubxona -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            background-color: #f4f7f6;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1100px;
+            margin: 20px;
+            gap: 30px;
+        }
+
+        /* Chap tomon - O'quvchilar ro'yxati */
+        .sidebar {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            resize: none;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .setting-box {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .setting-box input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .update-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .update-btn:hover { background: #219150; }
+
+        /* O'ng tomon - Baraban */
+        .wheel-container {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wheel-box {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        .pointer {
+            position: absolute;
+            top: 50%;
+            right: -15px;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            border-right: 30px solid #e74c3c;
+            z-index: 10;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            transition: transform 5s cubic-bezier(0.15, 0.9, 0.2, 1);
+        }
+
+        .spin-btn {
+            margin-top: 30px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .spin-btn:hover { background: #c0392b; }
+        .spin-btn:active { transform: scale(0.98); }
+
+        /* Savol oynasi (Modal) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .winner-name { font-size: 28px; color: #2980b9; margin-bottom: 15px; font-weight: bold; }
+        .question-text { font-size: 18px; color: #333; margin-bottom: 25px; line-height: 1.5; }
+        .close-btn { background: #3498db; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 5px; cursor: pointer; }
+        .close-btn:hover { background: #2980b9; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .wheel-box { width: 300px; height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Chap tomon -->
+        <div class="sidebar">
+            <h2>O'quvchilar ro'yxati</h2>
+            <textarea id="studentNames">
+Azizbek
+Madina
+Jasur
+Sardor
+Malika
+Doston
+Shaxzoda
+Asadbek</textarea>
+            
+            <div class="setting-box">
+                <input type="checkbox" id="removeWinnerCheck" checked>
+                <label for="removeWinnerCheck">G'olibni ro'yxatdan o'chirish</label>
+            </div>
+
+            <button class="update-btn" id="updateBtn">Ro'yxatni yangilash</button>
+        </div>
+
+        <!-- O'ng tomon -->
+        <div class="wheel-container">
+            <div class="wheel-box">
+                <div class="pointer"></div>
+                <canvas id="wheelCanvas" width="500" height="500"></canvas>
+            </div>
+            <button class="spin-btn" id="spinBtn">AYLANTIRISH</button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="winner-name" id="winnerName">Ism</div>
+            <div class="question-text" id="questionText">Savol matni</div>
+            <button class="close-btn" id="closeBtn">Davom etish</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            "Internet tarmog'i bilan World Wide Web (WWW) tizimining farqini hayotiy misol bilan qanday tushuntirasiz?",
+            "Nima sababdan brauzer keshini muntazam tozalab turish kerak bo'ladi?",
+            "Google qidiruvida 'site:' va 'filetype:' operatorlarining vazifasi nima?",
+            "Elektron pochtadagi Bcc (Yashirin nusxa) qanday vaziyatlarda ishlatiladi?",
+            "Nima uchun pochtaga biriktirilgan .exe yoki noma'lum arxiv fayllarni ochish xavfli hisoblanadi?",
+            "Nega ochiq va parolsiz Wi-Fi nuqtalarida shaxsiy pochta yoki bank akkauntlariga kirmaslik tavsiya etiladi?",
+            "Kesh (Cache) va Kuki (Cookies) nima va ularning bir-biridan asosiy farqi qanday?",
+            "Inkognito rejimi qanday ishlaydi va u nimalardan himoya QILMAYDI?",
+            "Fishing (Phishing) xatlarini qanday aniqlash mumkin? Ulardagi 3 ta shubhali alomatni sanang.",
+            "Zamonaviy elektron pochtada xat yozish etiketining (Mavzu, salomlashish, birikma) asosiy qoidalari nimalardan iborat?"
+        ];
+
+        const canvas = document.getElementById("wheelCanvas");
+        const ctx = canvas.getContext("2d");
+        const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e'];
+        
+        let students = [];
+        let currentRotation = 0;
+        let isSpinning = false;
+        let lastWinner = "";
+
+        // Web Audio API orqali ovoz hosil qilish
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playClickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.04);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.04);
+        }
+
+        function playWinSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const notes = [261.63, 329.63, 392.00, 523.25];
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.08);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime + index * 0.08);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + index * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + index * 0.08);
+                osc.stop(audioCtx.currentTime + index * 0.08 + 0.25);
+            });
+        }
+
+        function updateWheel() {
+            const text = document.getElementById("studentNames").value;
+            students = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+            
+            if (students.length === 0) {
+                students = ["O'quvchi yo'q"];
+            }
+            drawWheel();
+        }
+
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2;
+            const sliceAngle = (2 * Math.PI) / students.length;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < students.length; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#ffffff";
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(i * sliceAngle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 22px Arial";
+                ctx.fillText(students[i], radius - 30, 8); 
+                ctx.restore();
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning || students[0] === "O'quvchi yo'q") return;
+            isSpinning = true;
+
+            const winningIndex = Math.floor(Math.random() * students.length);
+            lastWinner = students[winningIndex];
+
+            const sliceAngleDeg = 360 / students.length;
+            const targetAngle = winningIndex * sliceAngleDeg + (sliceAngleDeg / 2);
+            const extraSpins = (Math.floor(Math.random() * 5) + 5) * 360; 
+            const nextRotation = currentRotation + extraSpins + (360 - (currentRotation % 360)) - targetAngle;
+
+            // Baraban aylanayotganida harakatli chertish sound effekti
+            let ticks = 0;
+            const soundInterval = setInterval(() => {
+                if (ticks < 25) {
+                    playClickSound();
+                    ticks++;
+                } else {
+                    clearInterval(soundInterval);
+                }
+            }, 180);
+
+            canvas.style.transform = `rotate(${nextRotation}deg)`;
+            currentRotation = nextRotation;
+
+            setTimeout(() => {
+                const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+                document.getElementById("winnerName").innerText = "🎉 " + lastWinner + " 🎉";
+                document.getElementById("questionText").innerText = randomQuestion;
+                document.getElementById("modal").style.display = "flex";
+                
+                playWinSound();
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                
+                isSpinning = false;
+            }, 5000);
+        }
+
+        // Modal yopilganda g'olibni avtomatik o'chirish
+        document.getElementById("closeBtn").addEventListener("click", () => {
+            document.getElementById("modal").style.display = "none";
+            
+            const shouldRemove = document.getElementById("removeWinnerCheck").checked;
+            if (shouldRemove && lastWinner && lastWinner !== "O'quvchi yo'q") {
+                const textarea = document.getElementById("studentNames");
+                const currentList = textarea.value.split('\n').map(s => s.trim());
+                const newList = currentList.filter(name => name !== lastWinner);
+                textarea.value = newList.join('\n');
+                updateWheel();
+            }
+        });
+
+        document.getElementById("updateBtn").addEventListener("click", updateWheel);
+        document.getElementById("spinBtn").addEventListener("click", spinWheel);
+
+        updateWheel();
+    </script>
+</body>
+</html>
