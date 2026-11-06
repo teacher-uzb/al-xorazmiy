@@ -2,8 +2,10 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Baraban O'yini</title>
+    <!-- Konfetti uchun kutubxona -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -57,6 +59,23 @@
             outline: none;
         }
 
+        /* Yangi qo'shilgan sozlama (Checkbox) dizayni */
+        .setting-box {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .setting-box input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
         .update-btn {
             background: #27ae60;
             color: white;
@@ -104,7 +123,7 @@
             height: 100%;
             border-radius: 50%;
             box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            transition: transform 5s cubic-bezier(0.25, 0.1, 0.15, 1);
+            transition: transform 5s cubic-bezier(0.15, 0.9, 0.2, 1);
         }
 
         .spin-btn {
@@ -126,7 +145,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.7);
-            display: none; /* Dastlab yashiringan */
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 100;
@@ -167,6 +186,13 @@ Malika
 Doston
 Shaxzoda
 Asadbek</textarea>
+            
+            <!-- G'olibni o'chirib yuborish opsiyasi -->
+            <div class="setting-box">
+                <input type="checkbox" id="removeWinnerCheck" checked>
+                <label for="removeWinnerCheck">G'olibni ro'yxatdan o'chirish</label>
+            </div>
+
             <button class="update-btn" id="updateBtn">Ro'yxatni yangilash</button>
         </div>
 
@@ -211,11 +237,45 @@ Asadbek</textarea>
         let students = [];
         let currentRotation = 0;
         let isSpinning = false;
+        let lastWinner = "";
+
+        // Audio konteksti va ovoz generatorlari
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playClickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.04);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.04);
+        }
+
+        function playWinSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const notes = [261.63, 329.63, 392.00, 523.25];
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.08);
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime + index * 0.08);
+                gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + index * 0.08 + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + index * 0.08);
+                osc.stop(audioCtx.currentTime + index * 0.08 + 0.25);
+            });
+        }
 
         // Barabanni yangilash funksiyasi
         function updateWheel() {
             const text = document.getElementById("studentNames").value;
-            // Bo'sh joylarni tozalash va massivga o'tkazish
             students = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
             
             if (students.length === 0) {
@@ -239,6 +299,8 @@ Asadbek</textarea>
                 ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
                 ctx.fillStyle = colors[i % colors.length];
                 ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#ffffff";
                 ctx.stroke();
 
                 ctx.save();
@@ -252,14 +314,13 @@ Asadbek</textarea>
             }
         }
 
-
         // Aylantirish funksiyasi
         function spinWheel() {
             if (isSpinning || students[0] === "O'quvchi yo'q") return;
             isSpinning = true;
 
             const winningIndex = Math.floor(Math.random() * students.length);
-            const winner = students[winningIndex];
+            lastWinner = students[winningIndex];
 
             const sliceAngleDeg = 360 / students.length;
             const targetAngle = winningIndex * sliceAngleDeg + (sliceAngleDeg / 2);
@@ -267,15 +328,30 @@ Asadbek</textarea>
             const spins = (Math.floor(Math.random() * 5) + 5) * 360; 
             const finalRotation = currentRotation + spins + (360 - targetAngle) - (currentRotation % 360);
 
+            // Aylanayotganda chertish ovozi
+            let ticks = 0;
+            const soundInterval = setInterval(() => {
+                if (ticks < 25) {
+                    playClickSound();
+                    ticks++;
+                } else {
+                    clearInterval(soundInterval);
+                }
+            }, 180);
+
             canvas.style.transform = `rotate(${Math.round(finalRotation)}deg)`;
             currentRotation = finalRotation;
 
             // 5 soniyadan keyin natijani chiqarish
             setTimeout(() => {
                 const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-                document.getElementById("winnerName").innerText = "🎉 " + winner + " 🎉";
+                document.getElementById("winnerName").innerText = "🎉 " + lastWinner + " 🎉";
                 document.getElementById("questionText").innerText = randomQuestion;
                 document.getElementById("modal").style.display = "flex";
+                
+                playWinSound();
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                
                 isSpinning = false;
             }, 5000);
         }
@@ -283,21 +359,23 @@ Asadbek</textarea>
         // Tugmalarga hodisalarni ulash
         document.getElementById("updateBtn").addEventListener("click", updateWheel);
         document.getElementById("spinBtn").addEventListener("click", spinWheel);
+        
         document.getElementById("closeBtn").addEventListener("click", () => {
             document.getElementById("modal").style.display = "none";
+
+            // Agar checkbox yoqilgan bo'lsa, chiqqan o'quvchini ro'yxatdan o'chirish
+            const shouldRemove = document.getElementById("removeWinnerCheck").checked;
+            if (shouldRemove && lastWinner && lastWinner !== "O'quvchi yo'q") {
+                const textarea = document.getElementById("studentNames");
+                const currentList = textarea.value.split('\n').map(s => s.trim());
+                const newList = currentList.filter(name => name !== lastWinner);
+                textarea.value = newList.join('\n');
+                updateWheel();
+            }
         });
 
         // Dastur ishga tushganda birinchi marta chizish
         updateWheel();
     </script>
-</body> 
-
-    habibulla test
-</html>habibulla test
-
-
-
+</body>
 </html>
-//test abdurahmon
-//TEST habix
-
